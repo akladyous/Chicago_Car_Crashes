@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.utils.class_weight import compute_class_weight
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import (confusion_matrix, plot_confusion_matrix,classification_report,
                              accuracy_score, precision_score, recall_score, f1_score, log_loss, roc_auc_score)
@@ -56,6 +57,20 @@ class Dframe:
             print(f"{x:<4} {self._df.columns[x]:<30}{self._df[self._df.columns[x]].isna().sum():<8,}\
             {(self._df[self._df.columns[x]].isna().sum() / (df_rows) * 100):<8,.2f}% {str(self._df[self._df.columns[x]].dtype):<5}")
 
+
+#features Selection - SKLEARN
+def select_features(CLS_name, Threshold, X_TRAIN, Y_TRAIN, X_TEST):
+    
+    selector   = SelectFromModel(estimator=CLS_name, threshold=Threshold)
+    selector.fit(X_TRAIN, Y_TRAIN)
+    
+    x_train_fs = selector.transform(X_TRAIN)
+    x_test_fs  = selector.transform(X_TEST)
+    X_columns  = selector.get_support()
+    
+    return x_train_fs, x_test_fs, X_columns, selector
+
+
 class SpeedTransformer(BaseEstimator, TransformerMixin):
         def __init__(self, ColumnName):
             self.ColumnName = ColumnName
@@ -82,6 +97,7 @@ class SpeedTransformer(BaseEstimator, TransformerMixin):
             return X_np_array
 
 
+
 class ColumnSelectorTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, columns_list=[]):
         self.columns_list = columns_list
@@ -101,9 +117,11 @@ class DateTransformer(BaseEstimator, TransformerMixin):
         DateTransformed = pd.to_datetime(X[self.DateColumnName])
         return DateTransformed
 
-def y_classes(x):
+def target_grouper(x):
+    #DISREGARDING
     if 'DISREGARDING' in x:
         return 'DISREGARDING'
+    #DISTRACTION
     elif 'DISTRACTION' in x:
         return 'DISTRACTION'
     elif 'CELL' in x:
@@ -112,11 +130,8 @@ def y_classes(x):
         return 'DISTRACTION'
     elif 'TEXTING' in x:
         return 'DISTRACTION'
+    #IMPROPER_MANEUVER
     elif 'IMPROPER' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'CARELESS' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'FOLLOWING TOO CLOSELY' in x:
         return 'IMPROPER_MANEUVER'
     elif 'FAILING TO YIELD' in x:
         return 'IMPROPER_MANEUVER'
@@ -124,30 +139,54 @@ def y_classes(x):
         return 'IMPROPER_MANEUVER'
     elif 'FAILING TO REDUCE SPEED' in x:
         return 'IMPROPER_MANEUVER'
-    elif 'PASSING STOPPED SCHOOL' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'BICYCLE ADVANCING' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'MOTORCYCLE ADVANCING' in x:
-        return 'IMPROPER_MANEUVER'
+    #DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE
     elif 'DRIVING' in x:
         return 'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
+    elif 'FOLLOWING TOO CLOSELY' in x:
+        return 'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
+    #ROAD_CONDITION
     elif 'ROAD CONSTRUCTION' in x:
         return 'ROAD_CONDITION'
     elif 'ROAD ENGINEERING' in x:
         return 'ROAD_CONDITION'
+    #ROAD_CONDITION
     elif 'OBSTRUCTED CROSSWALKS' in x:
         return 'ROAD_CONDITION'
     elif 'VISION OBSCURED' in x:
         return 'ROAD_CONDITION'
+    #ALCOHOL_DRUGS
     elif 'ALCOHOL' in x:
         return 'ALCOHOL_DRUGS'
     elif 'DRINKING' in x:
         return 'ALCOHOL_DRUGS'
+    #ANIMAL
     elif 'ANIMAL' in x:
         return 'ANIMAL'
     else:
         return x
+#check imbalanced
+def check_imbalanced(y, verbose=False):
+    negative, positive = np.bincount(np.ravel(np.array(y)).astype(np.int64))
+    total = positive + negative
+    positive_percent = total / positive
+    negative_percent = total / negative
+    if verbose:
+        print(f"{'Total Samples':15} {total}")
+        print(f"{'Total Positive':15} {positive:} {(positive*100/total):.2f}%")
+        print(f"{'Total Negative':15} {negative:} {(negative*100/total):.2f}%")
+    return total, positive, negative
+
+#Class Weight
+def get_class_weight(X, Y):
+    class_weight = dict()
+    class_weight = dict(
+        zip(
+            np.unique(Y),
+            compute_class_weight(class_weight='balanced', classes=np.unique(Y), y=np.ravel(np.array(Y)))
+            ))
+    return class_weight
+
+#print out Mertics
 def Metrics(clf, X, y):
     y_pred = clf.predict(X)
     
@@ -167,42 +206,25 @@ def Metrics(clf, X, y):
     plt.grid(False)
     plt.show()
 
-class xMetrics:
-    def __init__(self, y, y_pred):
-        self.y = y
-        self.y_pred = y_pred
-    
-    def get_metrics(self):
-        all_metrics = (
-        (accuracy_score, 'accuracy_score'),
-        (precision_score, 'precision_score'),
-        (recall_score, 'recall_score'),
-        (f1_score, 'f1_score'),
-        (roc_auc_score, 'roc_auc_score')
-        )
-        
-        for m, n in all_metrics:
-            #print(f"{n:20} {m(y, self._y_pred)}")
-            print(accuracy_score(y, self.y_pred))
-    def gg(self):
-        self.Accuracy_Score()
-    
-    def Accuracy_Score(self):
-        result = accuracy_score(self.y, self.y_pred)
-        print(f"{'Accuracy Score':20} {result}")
-    def Precision_Score(self):
-        result = precision_score(self.y, self.y_pred)
-        print(f"{'Precision Score':20} {result}")
-    def Recall_Score(self):
-        result = recall_score(self.y, self.y_pred)
-        print(f"{'Recall Score':20} {result}")
-    def F1_Score(self):
-        result = f1_score(self.y, self.y_pred)
-        print(f"{'F1 Score':20} {result}")    
-    def ROC_AUC_Score(self):
-        result = roc_auc_score(self.y, self.y_pred)
-        print(f"{'ROC_AUC Score':20} {result}")    
-    
+
+def algo_scoring():
+    ml_algo_name  = list()
+    ml_algo_score = list()
+    ml_algo = [
+        SVC(probability=True, random_state=264),
+        KNeighborsClassifier(weights='distance', n_jobs=4),
+        GaussianNB(),
+        DecisionTreeClassifier(class_weight='balanced', random_state=264),
+        AdaBoostClassifier(random_state=264),
+        RandomForestClassifier() ]
+
+    for algo in ml_algo:
+        ml_algo_name.append(algo.__class__.__name__)
+        cv_score = cross_val_score(algo, x_train, y_train, scoring='accuracy', cv=2, n_jobs=4).mean()
+        ml_algo_score.append(cv_score)
+
+    return pd.DataFrame(list(zip(ml_algo_name, ml_algo_score)), columns=['CLASSIFIER', 'ACCURACY'])
+
 
 def bagging(X_train, X_test, y_train, y_test,n_est):
     n_est=51
