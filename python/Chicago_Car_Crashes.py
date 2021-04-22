@@ -10,6 +10,9 @@ class Dframe:
     def __init__(self, dataframe):
         self._df = dataframe
     @property
+    def num_columns(self):
+        return self._df.select_dtypes(include=np.number).columns.tolist()
+    @property
     def int_columns(self):
         return self._df.select_dtypes(include=[np.int,np.int0,np.int16,np.int8,np.int16,np.int32,np.int64]).columns.tolist()
     @property
@@ -20,11 +23,11 @@ class Dframe:
         #pd.api.types.is_object_dtype(df['ROAD_DEFECT'])
         return self._df.select_dtypes(include=['object']).columns.tolist()
     @property
-    def NaN_float_columns(self):
+    def NaN_num_columns(self):
         series = self._df[self.float_columns].isnull().any()
         return series.index[series.values==True].tolist()
     @property
-    def NaN_object_colmns(self):
+    def NaN_obj_colmns(self):
         series = self._df[self.object_columns].isnull().any()
         return series.index[series.values==True].tolist()
     
@@ -57,27 +60,16 @@ class Dframe:
             print(f"{x:<4} {self._df.columns[x]:<30}{self._df[self._df.columns[x]].isna().sum():<8,}\
             {(self._df[self._df.columns[x]].isna().sum() / (df_rows) * 100):<8,.2f}% {str(self._df[self._df.columns[x]].dtype):<5}")
 
-
-#features Selection - SKLEARN
-def select_features(CLS_name, Threshold, X_TRAIN, Y_TRAIN, X_TEST):
-    
-    selector   = SelectFromModel(estimator=CLS_name, threshold=Threshold)
-    selector.fit(X_TRAIN, Y_TRAIN)
-    
-    x_train_fs = selector.transform(X_TRAIN)
-    x_test_fs  = selector.transform(X_TEST)
-    X_columns  = selector.get_support()
-    
-    return x_train_fs, x_test_fs, X_columns, selector
-
-
+# -------------------------------------------------------------------------------------------------
+# Speed Transormer: estimators
+# -------------------------------------------------------------------------------------------------
 class SpeedTransformer(BaseEstimator, TransformerMixin):
-        def __init__(self, ColumnName):
-            self.ColumnName = ColumnName
+        def __init__(self, parameter='None'):
+            self.parameter = parameter
         def fit(self, X, y=None, **fit_params):
             return self
         def transform(self, X, **transform_params):
-            X_np_array = X[self.ColumnName].to_numpy()
+            X_np_array = X.to_numpy()
             with np.nditer(X_np_array, op_flags=['readwrite']) as rows:
                 for row in rows:
                     if 0 <= row <= 15:
@@ -94,10 +86,21 @@ class SpeedTransformer(BaseEstimator, TransformerMixin):
                         row[...] = 65
                     elif 66 <= row <= 100:
                         row[...] = 70
-            return X_np_array
-
-
-
+            return pd.DataFrame(X_np_array).astype(np.str)
+# -------------------------------------------------------------------------------------------------
+# Date (dt64) Transormer: estimators
+# -------------------------------------------------------------------------------------------------
+class DateTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, parameter='None'):
+        self.parameter = parameter
+    def fit(self, X, y=None, **fit_params):
+        return self
+    def transform(self, X, **transform_params):
+        DateTransformed = pd.to_datetime(X)
+        return DateTransformed
+# -------------------------------------------------------------------------------------------------
+# Column Selector Transformer: estimators
+# -------------------------------------------------------------------------------------------------
 class ColumnSelectorTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, columns_list=[]):
         self.columns_list = columns_list
@@ -107,16 +110,22 @@ class ColumnSelectorTransformer(BaseEstimator, TransformerMixin):
         SelectedColumns = X[self.columns_list].copy()
         #SelectedColumns = set(X.columns.tolist()).difference((set(self.columns_list)))
         return SelectedColumns
-            
-class DateTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, DateColumnName):
-        self.DateColumnName = DateColumnName
-    def fit(self, X, y=None, **fit_params):
-        return self
-    def transform(self, X, **transform_params):
-        DateTransformed = pd.to_datetime(X[self.DateColumnName])
-        return DateTransformed
-
+#------------------------------------------------------------------------------------------------------------
+# features Selection - SKLEARN
+#------------------------------------------------------------------------------------------------------------
+def select_features(CLS_name, Threshold, X_TRAIN, Y_TRAIN, X_TEST):
+    
+    selector   = SelectFromModel(estimator=CLS_name, threshold=Threshold)
+    selector.fit(X_TRAIN, Y_TRAIN)
+    
+    x_train_fs = selector.transform(X_TRAIN)
+    x_test_fs  = selector.transform(X_TEST)
+    X_columns  = selector.get_support()
+    
+    return x_train_fs, x_test_fs, X_columns, selector
+#------------------------------------------------------------------------------------------------------------
+# Target Categorize
+#------------------------------------------------------------------------------------------------------------
 def target_grouper(x):
     #DISREGARDING
     if 'DISREGARDING' in x:
@@ -164,7 +173,9 @@ def target_grouper(x):
         return 'ANIMAL'
     else:
         return x
+#------------------------------------------------------------------------------------------------------------
 #check imbalanced
+#------------------------------------------------------------------------------------------------------------
 def check_imbalanced(y, verbose=False):
     negative, positive = np.bincount(np.ravel(np.array(y)).astype(np.int64))
     total = positive + negative
@@ -175,8 +186,9 @@ def check_imbalanced(y, verbose=False):
         print(f"{'Total Positive':15} {positive:} {(positive*100/total):.2f}%")
         print(f"{'Total Negative':15} {negative:} {(negative*100/total):.2f}%")
     return total, positive, negative
-
-#Class Weight
+#------------------------------------------------------------------------------------------------------------
+#Weighted Decision Tree
+#------------------------------------------------------------------------------------------------------------
 def get_class_weight(X, Y):
     class_weight = dict()
     class_weight = dict(
@@ -185,8 +197,17 @@ def get_class_weight(X, Y):
             compute_class_weight(class_weight='balanced', classes=np.unique(Y), y=np.ravel(np.array(Y)))
             ))
     return class_weight
-
+#------------------------------------------------------------------------------------------------------------
 #print out Mertics
+#------------------------------------------------------------------------------------------------------------
+def model_metric(clf, X,y):
+    y_pred = clf.predict(X)
+    print(f"{'ROC_AUC SCORE':15} {roc_auc_score(y, y_pred)}")
+    print(f"{'ACCURACY SCORE':15} {accuracy_score(y, y_pred)}")
+    return y_pred
+#------------------------------------------------------------------------------------------------------------
+#print out Mertics
+#------------------------------------------------------------------------------------------------------------
 def Metrics(clf, X, y):
     y_pred = clf.predict(X)
     
@@ -205,8 +226,9 @@ def Metrics(clf, X, y):
     plot_confusion_matrix(clf, X, y)
     plt.grid(False)
     plt.show()
-
-
+#------------------------------------------------------------------------------------------------------------
+#WAlgorith Scoring
+#------------------------------------------------------------------------------------------------------------
 def algo_scoring():
     ml_algo_name  = list()
     ml_algo_score = list()

@@ -54,7 +54,7 @@ Create a model to predict and classify prime contributory factors of car crashes
 
 #### Conclusion
 
-Random Forest Model predicts car crashes with 71% accuracy even dealing with imbalanced dataset with 102 features. The accuracy of the model can be improved by including the data of previous year (2015-2020).  Increasing the prediction accuracy as a potential use case, the the developed model can be used as a car accidents dediction system to predict the car crash occurances in real time.
+Random Forest Model predicts car crashes with 78% accuracy even dealing with imbalanced dataset with 102 features. The accuracy of the model can be improved by including the data of previous year (2015-2020).  Increasing the prediction accuracy as a potential use case, the the developed model can be used as a car accidents dediction system to predict the car crash occurances in real time.
 
 #### Further development
 
