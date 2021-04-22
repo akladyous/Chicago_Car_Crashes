@@ -126,53 +126,58 @@ def select_features(CLS_name, Threshold, X_TRAIN, Y_TRAIN, X_TEST):
 #------------------------------------------------------------------------------------------------------------
 # Target Categorize
 #------------------------------------------------------------------------------------------------------------
-def target_grouper(x):
-    #DISREGARDING
-    if 'DISREGARDING' in x:
-        return 'DISREGARDING'
-    #DISTRACTION
-    elif 'DISTRACTION' in x:
-        return 'DISTRACTION'
-    elif 'CELL' in x:
-        return 'DISTRACTION'
-    elif 'PHONE' in x:
-        return 'DISTRACTION'
-    elif 'TEXTING' in x:
-        return 'DISTRACTION'
-    #IMPROPER_MANEUVER
-    elif 'IMPROPER' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'FAILING TO YIELD' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'TURNING RIGHT ON RED' in x:
-        return 'IMPROPER_MANEUVER'
-    elif 'FAILING TO REDUCE SPEED' in x:
-        return 'IMPROPER_MANEUVER'
-    #DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE
-    elif 'DRIVING' in x:
-        return 'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
-    elif 'FOLLOWING TOO CLOSELY' in x:
-        return 'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
-    #ROAD_CONDITION
-    elif 'ROAD CONSTRUCTION' in x:
-        return 'ROAD_CONDITION'
-    elif 'ROAD ENGINEERING' in x:
-        return 'ROAD_CONDITION'
-    #ROAD_CONDITION
-    elif 'OBSTRUCTED CROSSWALKS' in x:
-        return 'ROAD_CONDITION'
-    elif 'VISION OBSCURED' in x:
-        return 'ROAD_CONDITION'
-    #ALCOHOL_DRUGS
-    elif 'ALCOHOL' in x:
-        return 'ALCOHOL_DRUGS'
-    elif 'DRINKING' in x:
-        return 'ALCOHOL_DRUGS'
-    #ANIMAL
-    elif 'ANIMAL' in x:
-        return 'ANIMAL'
-    else:
-        return x
+class Target_Grouper(BaseEstimator, TransformerMixin):
+    def __init__(self, parameter='None'):
+        self.parameter = parameter
+    def fit(self, X, y=None, **fit_params):
+        return self
+    def transform(self, X, **transform_params):
+        for idx, val in X.iteritems():
+            #DISREGARDING
+            if 'DISREGARDING' in val:
+                X.iat[idx] = 'DISREGARDING'
+            #DISTRACTION
+            elif 'DISTRACTION' in val:
+                X.iat[idx] = 'DISTRACTION'
+            elif 'CELL' in val:
+                X.iat[idx] = 'DISTRACTION'
+            elif 'PHONE' in val:
+                X.iat[idx] = 'DISTRACTION'
+            elif 'TEXTING' in val:
+                X.iat[idx] = 'DISTRACTION'
+            #IMPROPER_MANEUVER
+            elif 'IMPROPER OVERTAKING/PASSING' in val:
+                X.iat[idx] = 'IMPROPER_MANEUVER'
+            elif 'IMPROPER BACKING' in val:
+                X.iat[idx] = 'IMPROPER_MANEUVER'
+            elif 'IMPROPER LANE USAGE' in val:
+                X.iat[idx] = 'IMPROPER_MANEUVER'
+            elif 'IMPROPER TURNING/NO SIGNAL' in val:
+                X.iat[idx] = 'IMPROPER_MANEUVER'
+            #DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE
+            elif 'DRIVING' in val:
+                X.iat[idx] =  'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
+            elif 'FOLLOWING TOO CLOSELY' in val:
+                X.iat[idx] = 'DRIVING_SKILLS/KNOWLEDGE/EXPERIENCE'
+            #ROAD_CONDITION
+            elif 'ROAD ENGINEERING/SURFACE/MARKING DEFECTS' in val:
+                X.iat[idx] = 'ROAD_CONDITION'
+            elif 'ROAD CONSTRUCTION/MAINTENANCE' in val:
+                X.iat[idx] = 'ROAD_CONDITION'
+            #ROAD_CONDITION
+            elif 'OBSTRUCTED CROSSWALKS' in val:
+                X.iat[idx] = 'ROAD_CONDITION'
+            elif 'VISION OBSCURED' in val:
+                X.iat[idx] = 'ROAD_CONDITION'
+            #ALCOHOL_DRUGS
+            elif 'ALCOHOL' in val:
+                X.iat[idx] =  'ALCOHOL_DRUGS'
+            elif 'DRINKING' in val:
+                X.iat[idx] = 'ALCOHOL_DRUGS'
+            #ANIMAL
+            elif 'ANIMAL' in val:
+                X.iat[idx] = 'ANIMAL'
+        return X
 #------------------------------------------------------------------------------------------------------------
 #check imbalanced
 #------------------------------------------------------------------------------------------------------------
